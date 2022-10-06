@@ -108,7 +108,7 @@ push rbx
 
 ;initalize registers
 ;mov rsi , 0         ; source index register
-mov r12, 0
+
 ;	h = 1;
     mov dword[h], 1
 	
@@ -256,11 +256,10 @@ basicStats:
 	mov rbp, rsp
 	push r12
 
-push r9
 ;======== Sum ==============
 call lstSum
 	mov dword[r9], eax
-pop r9
+
 
 ;====== Ave ================
 ;save rdx across function call
@@ -419,76 +418,98 @@ lstAve:
 global linearRegression
 linearRegression:
 ;	YOUR CODE GOES HERE
-
+push rbp 
+mov  rbp, rsp
+push r15
+push r14
+push r13
 push r12
-push r11
-push r10
-push r9
-push r8
+
+;r15  index
+;r14  top sum
+;r13  bot sum
+;eax   top
+;r12  x - xHat
+;eax  y - yHat
+; (x - xhat)^2
+
+;b0_1: 425439
+;b1_1: 85
 
 
-; form 0, len-1 ;move edx into something else
-    dec edx 
-	cmp edx, 0
-	je exitRegressLoop
-	; var1 = x at list - xave
-	; var 1(r12) = subtract list at rdi xlist, ecx xave
-	mov r12d, dword[rdi*4] 
-	sub r12d, ecx
-
-	; var 2 = y list - y ave
-	; var 2(r11) = subtract list at rsi ylist, r8d yave
-	mov r11d, dword[rsi*4] 
-	mov eax, r11d
-	sub eax, r8d
-
-	; var 3 = x at list minus x ave squared
-	; var 3(r10) = multipy var1 x var2
-	mov eax, r12d
-	imul r11d
-	mov r10d, eax
-
-	;add r8(topsum), add var 3 to sum
-	add r8d, r10d
-
- 	; var 4 = mult var1 by var 1
-	mov eax, r12d
-	imul eax
-	;answer in eax = eax^2
 
 
-;add botsum temp, var 4
-add dword[temp], eax
-mov eax, dword[temp]
-mov r12, qword[rbp+16]
-mov dword [r12], eax
-;exitLoop
-exitRegressLoop:
+;initialize index
+mov r15, 0
+;initialize topsum 
+mov r14, 0
+;initalize botsum 
+mov r13, 0 
+;save copy of rdx to be clobbered by imul/idiv
+mov r11, rdx
+; loop form index is 0 to rdx-1
+	regressLoop:
+		cmp r15, r11
+		je exitRegressLoop
+		; var1 = x at list - xave
+		; var 1(r12) =  x - xHat
+		mov r12d, dword[rdi+r15*4] 
+		;sign extends r12d into r12
+		movsxd r12, r12d
+		sub r12, rcx
+
+		; var 2 (eax) = y list - y ave
+		; var 2(eax) = y - yHat(r8d)
+		mov eax, dword[rsi+r15*4]  
+		movsxd rax, eax
+		sub rax, r8
+
+		; var 3 = top (x-xHat * y-yHat)
+		; var 3(eax) = multipy var1 x var2
+		imul r12
+
+		;add r14(topsum), add var 3 to sum
+		add r14, rax
+		
+		; var 4 = bot (x - xhat)^2
+		mov rax, r12
+		imul rax
+		;answer in eax = eax^2
 
 
-	;var 6(b0/ r9) = divide r8/r11
-	mov eax,  r8d
-	idiv r11d
- 	mov dword[r9], eax
+		;add botsum temp, var 4
+		add r13, rax
 
-     ;stupid var complicated see above
-	 ;getting address out of stack
-	 ;putting result at said address
-    ; mov rax, qword[rpb+16]
-    ; mov dword[rax], var6
+		inc r15 
+	jmp regressLoop
+	;exitLoop
+	exitRegressLoop:
+
+	;b1
+	;var 6(top/bot) = divide r14/r13
+	mov rax, r14
+	cqo
+	idiv r13
+	;mov dword[stack], eax
+	mov r12, qword[rbp+16]
+    mov dword [r12], eax
 
 
 ;b sub 0
+	imul ecx
+	movsxd r8, r8d
+	sub r8, rax
+	mov dword[r9], r8d
 	;var 7 = b1 (var6) imul xave (ecx)
     ;sub y ave, var 7
 	
 	;mov result into dowrd[r9]
-pop r8
-pop r9
-pop r10
-pop r11
+
 pop r12
+pop r13
+pop r14
+pop r15
+pop rbp
 	ret
 
 ; ********************************************************************************
-
